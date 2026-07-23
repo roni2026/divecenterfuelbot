@@ -56,7 +56,7 @@ function registerBot(bot) {
     '⛴️ *Dive Centre Fuel Log*\n\n' +
     'Send me a photo of a *FUEL CHIT* and I will read each boat’s litres, detect Petrol vs ' +
     'Diesel, and log every filled-in row with its date.\n\n' +
-    'One chit can log several boats at once (Coral + Outrigger sections). Sending the *same ' +
+    'One chit can log several Coral boats at once. Sending the *same ' +
     'photo twice* is ignored. Export anytime to an Excel formatted just like your Dive Centre sheet.\n\n' +
     'Tip: to keep the real chit date, send the photo as a *File* (📎 → File) so its date metadata survives.\n\n' +
     'Use the menu below or the command list (☰).';
@@ -153,7 +153,7 @@ async function processChit(ctx, buffer, { compressed }) {
     return ctx.reply(
       '⚠️ I could not read any boat quantities on this chit.\n' +
         'Please make sure the photo is clear and upright, or add the entries manually in the dashboard.\n' +
-        `Detected chit dates: coral ${dates.coral || '—'}, outrigger ${dates.outrigger || '—'}.`
+        `Detected chit date: ${dates.coral || '—'}.`
     );
   }
 
@@ -194,7 +194,7 @@ async function processChit(ctx, buffer, { compressed }) {
   if (skipped.length) {
     lines.push(`\n♻️ Skipped ${skipped.length} row(s) already logged for the same boat/date/qty.`);
   }
-  if (!captureDate && (!dates.coral && !dates.outrigger)) {
+  if (!captureDate && !dates.coral) {
     lines.push('\n⚠️ I could not read a date on the chit or the photo, so today’s date was used. Please correct it in the dashboard if needed.');
   }
   await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });

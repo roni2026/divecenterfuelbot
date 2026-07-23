@@ -1,12 +1,13 @@
 // Parses a "FUEL CHIT" photo's OCR text into individual boat fuel entries.
 //
-// A chit has a fixed template of boats, split into two sections. Each boat is
-// permanently either Petrol (P) or Diesel (D), so we hard-code that mapping and
-// don't rely on OCR reading the P/D column. Each row may have a handwritten
-// quantity (litres); rows with no number are simply not logged. Each section
-// carries its own handwritten date.
+// This log is for the CORAL BOAT dive centre only (Maafushivaru / Outrigger
+// boats are intentionally NOT tracked here). Each boat is permanently either
+// Petrol (P) or Diesel (D), so we hard-code that mapping and don't rely on OCR
+// reading the P/D column. Each row may have a handwritten quantity (litres);
+// rows with no number are simply not logged. The chit carries a handwritten
+// date for the Coral section.
 
-// Canonical boats (order matches the printed chit).
+// Canonical Coral boats (order matches the printed chit).
 const BOATS = [
   // CORAL BOAT
   { name: 'Sea Explorer', type: 'petrol', section: 'coral', aliases: ['sea explorer', 'seaexplorer', 'sea exploror', 'sea explore', 'seaexploror'] },
@@ -15,14 +16,12 @@ const BOATS = [
   { name: 'Chill Time', type: 'diesel', section: 'coral', aliases: ['chill time', 'chilltime', 'chill lime', 'chi time'] },
   { name: 'Fish Stalker', type: 'diesel', section: 'coral', aliases: ['fish stalker', 'fishstalker', 'fish talker', 'fish staler', 'fish staker'] },
   { name: 'Arya', type: 'diesel', section: 'coral', aliases: ['arya', 'aryo', 'arla'] },
-  // OUTRIGGER BOAT
-  { name: 'Dreamwever', type: 'petrol', section: 'outrigger', aliases: ['dreamwever', 'dreamweaver', 'dream wever', 'dream weaver', 'dreamwaver', 'dreamwver'] },
-  { name: 'Wahoo', type: 'petrol', section: 'outrigger', aliases: ['wahoo', 'waboo', 'wahoe', 'wah00'] },
-  { name: 'Barge', type: 'petrol', section: 'outrigger', aliases: ['barge', 'barga', 'barae'] },
-  { name: 'Supply Boat', type: 'diesel', section: 'outrigger', aliases: ['supply boat', 'supplyboat', 'supply', 'suply boat'] },
-  { name: 'Freef Watch', type: 'diesel', section: 'outrigger', aliases: ['freef watch', 'reef watch', 'free watch', 'freefwatch', 'reefwatch', 'freef wath'] },
-  { name: 'Noohiri', type: 'diesel', section: 'outrigger', aliases: ['noohiri', 'noohir', 'noohiry', 'noohin', 'noohiri'] },
 ];
+
+// Keywords marking the start of the (untracked) Maafushivaru / Outrigger
+// section. Anything at/after one of these is ignored so the Maafushivaru date
+// and boats never leak into the Coral log.
+const OTHER_SECTION_RE = /outrigger|maafushi/i;
 
 function normalize(s) {
   return (s || '')
@@ -79,47 +78,41 @@ function extractQtyFromLine(line, alias) {
   return Math.max(...vals);
 }
 
-// Main entry point. Returns { entries: [...], dates: {coral, outrigger}, boatsSeen }.
+// Main entry point. Returns { entries: [...], dates: { coral } }.
 function parseChit(rawText, fallbackDate) {
   const text = (rawText || '').replace(/\r/g, '');
   const lines = text.split('\n');
-  const norm = normalize(text);
 
-  // Determine where the OUTRIGGER section starts to attribute dates/rows.
-  const outriggerIdx = norm.indexOf('outrigger');
-
-  // Dates: those before the OUTRIGGER keyword belong to the coral section,
-  // those after to the outrigger section. Fall back across sections.
-  const dates = findDates(text);
-  // Map char index in original text roughly to normalized by searching lines.
-  let coralDate = null;
-  let outriggerDate = null;
-  // Build a section marker per line.
+  // Mark each line as belonging to the coral section or the (ignored) other
+  // section, so a stray Maafushivaru date/boat can't bleed into the Coral log.
   let sectionOfLine = [];
-  let seenOutrigger = false;
+  let seenOther = false;
   for (const ln of lines) {
-    if (/outrigger/i.test(ln)) seenOutrigger = true;
-    sectionOfLine.push(seenOutrigger ? 'outrigger' : 'coral');
+    if (OTHER_SECTION_RE.test(ln)) seenOther = true;
+    sectionOfLine.push(seenOther ? 'other' : 'coral');
   }
-  // Assign dates by scanning lines for date tokens.
+
+  // Coral date: the first readable date token within the coral section.
+  let coralDate = null;
   lines.forEach((ln, i) => {
+    if (coralDate || sectionOfLine[i] !== 'coral') return;
     const iso = parseChitDate(ln);
-    if (!iso) return;
-    if (sectionOfLine[i] === 'outrigger' && !outriggerDate) outriggerDate = iso;
-    else if (sectionOfLine[i] === 'coral' && !coralDate) coralDate = iso;
+    if (iso) coralDate = iso;
   });
-  // Fallbacks
-  if (!coralDate && dates[0]) coralDate = dates[0].iso;
-  if (!outriggerDate && dates.length) outriggerDate = dates[dates.length - 1].iso;
-  if (!coralDate) coralDate = outriggerDate || fallbackDate || null;
-  if (!outriggerDate) outriggerDate = coralDate || fallbackDate || null;
+  // Fallbacks: any date on the chit, then the photo/EXIF fallback date.
+  if (!coralDate) {
+    const dates = findDates(text);
+    if (dates[0]) coralDate = dates[0].iso;
+  }
+  if (!coralDate) coralDate = fallbackDate || null;
 
   const entries = [];
   for (const boat of BOATS) {
-    // find the first line that mentions this boat
+    // find the first coral-section line that mentions this boat
     let lineIdx = -1;
     let matchedAlias = null;
     for (let i = 0; i < lines.length; i++) {
+      if (sectionOfLine[i] !== 'coral') continue;
       const nl = normalize(lines[i]);
       const alias = boat.aliases.find(a => nl.includes(a));
       if (alias) { lineIdx = i; matchedAlias = alias; break; }
@@ -127,18 +120,17 @@ function parseChit(rawText, fallbackDate) {
     if (lineIdx === -1) continue;
     const qty = extractQtyFromLine(lines[lineIdx], matchedAlias);
     if (qty === null) continue; // no fuel written for this boat
-    const date = boat.section === 'coral' ? coralDate : outriggerDate;
     entries.push({
       boat_name: boat.name,
       fuel_type: boat.type,
       section: boat.section,
       quantity: qty,
       unit: 'Ltrs',
-      log_date: date,
+      log_date: coralDate,
     });
   }
 
-  return { entries, dates: { coral: coralDate, outrigger: outriggerDate } };
+  return { entries, dates: { coral: coralDate } };
 }
 
 module.exports = { BOATS, parseChit, parseChitDate, findDates, extractQtyFromLine, normalize };

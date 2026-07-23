@@ -3,11 +3,11 @@ let liveInterval = null;
 let editingId = null;         // null = adding a new entry
 let activeType = 'petrol';
 
+// Coral Boat dive centre only (Maafushivaru boats are not tracked here).
 const BOATS = [
   'Sea Explorer', 'Jetski', 'Gonzo', 'Chill Time', 'Fish Stalker', 'Arya',
-  'Dreamwever', 'Wahoo', 'Barge', 'Supply Boat', 'Freef Watch', 'Noohiri',
 ];
-const PETROL_BOATS = new Set(['Sea Explorer', 'Jetski', 'Gonzo', 'Dreamwever', 'Wahoo', 'Barge']);
+const PETROL_BOATS = new Set(['Sea Explorer', 'Jetski', 'Gonzo']);
 
 const $ = sel => document.querySelector(sel);
 

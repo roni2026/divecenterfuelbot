@@ -4,9 +4,10 @@ A Telegram bot + web dashboard for logging boat fuel from **FUEL CHIT** photos, 
 an Excel export formatted exactly like the Dive Centre fuel sheet.
 
 - Send a photo of a fuel chit to the Telegram bot.
-- It OCRs the chit (via **OCR.space**), reads every boat that has a written quantity,
+- It OCRs the chit (via **OCR.space**, Engine 3), reads every boat that has a written quantity,
   detects Petrol vs Diesel from the fixed boat list, and logs each row with its date.
-- One chit logs several boats at once (Coral + Outrigger sections, each with its own date).
+- One chit logs several **Coral Boat** entries at once. Only Coral boats are tracked here;
+  the Maafushivaru (Outrigger) section is ignored.
 - A password-protected web dashboard lets you view logs live, add/edit/correct entries,
   filter by date range, switch Petrol/Diesel sheets, and export to Excel/PDF or print.
 - Excel export reproduces the Dive Centre layout: **PETROL** and **DIESEL** side by side
@@ -21,7 +22,9 @@ an Excel export formatted exactly like the Dive Centre fuel sheet.
 | Section | Petrol | Diesel |
 |---|---|---|
 | Coral Boat | Sea Explorer, Jetski, Gonzo | Chill Time, Fish Stalker, Arya |
-| Outrigger Boat | Dreamwever, Wahoo, Barge | Supply Boat, Freef Watch, Noohiri |
+
+Only **Coral Boat** boats are logged. The Maafushivaru (Outrigger) section of the chit is
+ignored, even if it appears in the same photo.
 
 Each boat is always Petrol or Diesel, so the bot uses this mapping rather than relying on
 OCR reading the P/D column. If a boat is renamed or added, update `BOATS` in `src/parser.js`
@@ -29,7 +32,7 @@ OCR reading the P/D column. If a boat is renamed or added, update `BOATS` in `sr
 
 ## How dates are picked
 
-The date written on each chit section is used (`dd/mm/yy`). If the handwritten date can't be
+The date written on the Coral section of the chit is used (`dd/mm/yy`). If the handwritten date can't be
 read, the bot falls back to the photo's EXIF capture date, then to today (and flags it).
 Send the photo as a **File** (📎 → File) to preserve the photo's date metadata. You can always
 fix a date in the dashboard.
@@ -37,8 +40,7 @@ fix a date in the dashboard.
 ## Setup
 
 ### 1. OCR.space API key
-Sign up at https://ocr.space/ocrapi and set `OCR_SPACE_API_KEY`. Engine 2 is used by default
-with an automatic Engine 3 retry.
+Sign up at https://ocr.space/ocrapi and set `OCR_SPACE_API_KEY`. Engine 3 is used for reading chits.
 
 ### 2. Supabase
 1. Create a project at https://supabase.com.

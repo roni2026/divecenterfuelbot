@@ -1,11 +1,8 @@
-// OCR via OCR.space (https://ocr.space/ocrapi). Uses Engine 2 by default since
-// it tends to be more reliable for structured/dotted digital-display text; if
-// it fails to find any usable reading, automatically retries once with
-// Engine 3 before giving up.
-
-const { extractFields } = require('./parser');
+// OCR via OCR.space (https://ocr.space/ocrapi). Uses Engine 3, which handles the
+// mixed handwritten/printed fuel chits best for this log.
 
 const OCR_SPACE_URL = 'https://api.ocr.space/parse/image';
+const OCR_ENGINE = 3;
 
 async function callOcrSpace(buffer, engine) {
   const form = new FormData();
@@ -26,34 +23,13 @@ async function callOcrSpace(buffer, engine) {
   return (data.ParsedResults || []).map(r => r.ParsedText).join('\n');
 }
 
-// "Usable" = we found at least one of the key value fields (PV for diesel, V
-// for petrol) in the text - if neither is present the reading is unreliable
-// and worth a retry on the other engine.
-function hasReadableValue(text) {
-  const fields = extractFields(text);
-  return fields.PV !== undefined || fields.V !== undefined;
-}
-
 async function ocrImage(buffer) {
-  let text = '';
   try {
-    text = await callOcrSpace(buffer, 2);
+    return await callOcrSpace(buffer, OCR_ENGINE);
   } catch (e) {
-    console.error('OCR engine 2 failed:', e.message);
+    console.error(`OCR engine ${OCR_ENGINE} failed:`, e.message);
+    return '';
   }
-
-  if (!hasReadableValue(text)) {
-    try {
-      const retryText = await callOcrSpace(buffer, 3);
-      if (retryText && (hasReadableValue(retryText) || !text)) {
-        return retryText;
-      }
-    } catch (e) {
-      console.error('OCR engine 3 retry failed:', e.message);
-    }
-  }
-
-  return text;
 }
 
 module.exports = { ocrImage };
