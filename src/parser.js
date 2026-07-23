@@ -49,6 +49,20 @@ function parseChitDate(token) {
   return `${year}-${pad(mo)}-${pad(d)}`;
 }
 
+// Handwritten years OCR poorly (e.g. a '6' read as '0', so 18/07/26 -> 18/07/20).
+// The day and month read far more reliably, so if the chit's year is more than a
+// year away from the photo/fallback year, keep the chit's day+month but snap the
+// year to the fallback's.
+function reconcileYear(iso, fallback) {
+  if (!iso || !fallback) return iso;
+  const a = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const b = String(fallback).match(/^(\d{4})-/);
+  if (!a || !b) return iso;
+  const fbYear = parseInt(b[1], 10);
+  if (Math.abs(parseInt(a[1], 10) - fbYear) > 1) return `${fbYear}-${a[2]}-${a[3]}`;
+  return iso;
+}
+
 // Find all date tokens in the text, with their character offset.
 function findDates(text) {
   const out = [];
@@ -61,21 +75,54 @@ function findDates(text) {
   return out;
 }
 
-// Extract the quantity written on a boat's line. Boat rows look like
-// "SEA EXPLORER P 390" — we drop the boat name and the lone P/D marker and take
-// the remaining 1-4 digit number as the quantity.
-function extractQtyFromLine(line, alias) {
-  let rest = normalize(line);
-  // remove the matched boat alias
-  rest = rest.replace(alias, ' ');
-  // drop a standalone p/d fuel marker
-  rest = rest.replace(/\b[pd]\b/g, ' ');
-  const nums = rest.match(/\d{1,4}(?:\.\d+)?/g);
-  if (!nums || !nums.length) return null;
-  // Take the largest plausible number (quantities dominate any stray digit).
-  const vals = nums.map(Number).filter(n => n > 0 && n <= 9999);
-  if (!vals.length) return null;
-  return Math.max(...vals);
+// A boat row on the chit is "NAME  P/D  [qty]". OCR (Engine 3) usually splits
+// the name, the P/D marker and the handwritten quantity onto separate lines:
+//   ARYA
+//   D 390
+// The quantity, when written, sits on the SAME line as the P/D marker. Stray
+// numbers from the background (calendar dates like 11, 13, 20, 27) land on
+// their own number-only lines with no P/D marker, so keying the quantity off
+// the marker line avoids picking those up.
+function markerInfo(lineNorm) {
+  const isMarker = /\b[pd]\b/.test(lineNorm);
+  if (!isMarker) return { isMarker: false, qty: null };
+  const cleaned = lineNorm.replace(/\b[pd]\b/g, ' ');
+  const nums = (cleaned.match(/\d{1,4}(?:\.\d+)?/g) || [])
+    .map(Number)
+    .filter(n => n > 0 && n <= 9999);
+  return { isMarker: true, qty: nums.length ? Math.max(...nums) : null };
+}
+
+function lineMentionsOtherBoat(lineNorm, self) {
+  return BOATS.some(b => b !== self && b.aliases.some(a => lineNorm.includes(a)));
+}
+
+// For one boat, find its name line (within the coral section), then read the
+// quantity off that boat's P/D marker line (the name line itself or one of the
+// next few lines). Returns { found, qty } where qty is null when the boat row
+// has a P/D marker but no handwritten number.
+function findBoatQty(lines, sectionOfLine, boat) {
+  let nameIdx = -1;
+  let alias = null;
+  for (let i = 0; i < lines.length; i++) {
+    if (sectionOfLine[i] !== 'coral') continue;
+    const nl = normalize(lines[i]);
+    const a = boat.aliases.find(x => nl.includes(x));
+    if (a) { nameIdx = i; alias = a; break; }
+  }
+  if (nameIdx === -1) return { found: false, qty: null };
+
+  const end = Math.min(nameIdx + 3, lines.length - 1);
+  for (let j = nameIdx; j <= end; j++) {
+    if (sectionOfLine[j] !== 'coral') break;           // don't cross sections
+    const nl = normalize(lines[j]);
+    if (j > nameIdx && lineMentionsOtherBoat(nl, boat)) break; // reached next boat
+    if (j > nameIdx && (parseChitDate(lines[j]) || /signature|date/.test(nl))) break;
+    const rest = nl.split(alias).join(' '); // drop this boat's name if inline
+    const info = markerInfo(rest);
+    if (info.isMarker) return { found: true, qty: info.qty };
+  }
+  return { found: true, qty: null };
 }
 
 // Main entry point. Returns { entries: [...], dates: { coral } }.
@@ -85,7 +132,7 @@ function parseChit(rawText, fallbackDate) {
 
   // Mark each line as belonging to the coral section or the (ignored) other
   // section, so a stray Maafushivaru date/boat can't bleed into the Coral log.
-  let sectionOfLine = [];
+  const sectionOfLine = [];
   let seenOther = false;
   for (const ln of lines) {
     if (OTHER_SECTION_RE.test(ln)) seenOther = true;
@@ -104,22 +151,13 @@ function parseChit(rawText, fallbackDate) {
     const dates = findDates(text);
     if (dates[0]) coralDate = dates[0].iso;
   }
+  coralDate = reconcileYear(coralDate, fallbackDate);
   if (!coralDate) coralDate = fallbackDate || null;
 
   const entries = [];
   for (const boat of BOATS) {
-    // find the first coral-section line that mentions this boat
-    let lineIdx = -1;
-    let matchedAlias = null;
-    for (let i = 0; i < lines.length; i++) {
-      if (sectionOfLine[i] !== 'coral') continue;
-      const nl = normalize(lines[i]);
-      const alias = boat.aliases.find(a => nl.includes(a));
-      if (alias) { lineIdx = i; matchedAlias = alias; break; }
-    }
-    if (lineIdx === -1) continue;
-    const qty = extractQtyFromLine(lines[lineIdx], matchedAlias);
-    if (qty === null) continue; // no fuel written for this boat
+    const { found, qty } = findBoatQty(lines, sectionOfLine, boat);
+    if (!found || qty === null) continue; // no fuel written for this boat
     entries.push({
       boat_name: boat.name,
       fuel_type: boat.type,
@@ -133,4 +171,4 @@ function parseChit(rawText, fallbackDate) {
   return { entries, dates: { coral: coralDate } };
 }
 
-module.exports = { BOATS, parseChit, parseChitDate, findDates, extractQtyFromLine, normalize };
+module.exports = { BOATS, parseChit, parseChitDate, findDates, findBoatQty, normalize };
