@@ -1,0 +1,94 @@
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f4f6f8; color: #1a1a1a; }
+
+.screen { min-height: 100vh; }
+#loginScreen { display: flex; align-items: center; justify-content: center; background: #12203a; }
+.login-box { background: white; padding: 40px; border-radius: 10px; width: 320px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+.login-box h1 { font-size: 20px; margin: 0; text-align: center; }
+.login-box .subtitle { text-align: center; color: #666; margin: 0 0 10px; font-size: 13px; }
+.login-box input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+.login-box button { padding: 10px; border: none; background: #1a5fb4; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.error { color: #c0392b; font-size: 13px; text-align: center; min-height: 16px; }
+
+header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: #12203a; color: white; }
+header h1 { font-size: 18px; margin: 0; }
+.link-btn { background: none; border: 1px solid rgba(255,255,255,0.5); color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+
+.controls { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; flex-wrap: wrap; gap: 12px; background: white; border-bottom: 1px solid #ddd; }
+.filter-group, .action-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.filter-group label, .live-toggle { font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+.controls input, .controls select, .controls button { padding: 7px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+.controls button, .action-group button { background: #1a5fb4; color: white; border: none; cursor: pointer; }
+
+table { width: 100%; border-collapse: collapse; background: white; margin: 0 auto; }
+th, td { border: 1px solid #ddd; padding: 8px 10px; font-size: 13px; text-align: left; }
+th { background: #eef1f5; }
+tbody tr:nth-child(even) { background: #fafafa; }
+
+.editBtn, .delBtn { padding: 4px 8px; font-size: 12px; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; margin-right: 4px; }
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; }
+.modal { background: white; padding: 24px; border-radius: 8px; width: 320px; display: flex; flex-direction: column; gap: 10px; }
+.modal label { font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+.modal input, .modal select { padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.modal-actions button { padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer; }
+.modal-actions .secondary { background: #ddd; }
+#saveEdit { background: #1a5fb4; color: white; }
+
+.print-only { display: none; }
+
+/* Printed reports stay plain black and white as requested */
+@media print {
+  header, .controls, .no-print { display: none !important; }
+  .print-only { display: block; text-align: center; margin-bottom: 12px; }
+  body { background: white; }
+  table, th, td { border: 1px solid #000 !important; }
+  th { background: white !important; color: #000; }
+  tbody tr { background: white !important; }
+  * { color: #000 !important; box-shadow: none !important; }
+}
+
+/* Day-over-day flags */
+.refill {
+  color: #b45309;
+  font-weight: 600;
+}
+.variance {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* Sheet tabs (Petrol / Diesel / All) */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 4px;
+  border-bottom: 2px solid #ddd;
+}
+.tabs .tab {
+  background: #f2f2f2;
+  border: 1px solid #ddd;
+  border-bottom: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 6px 6px 0 0;
+  color: #444;
+}
+.tabs .tab:hover {
+  background: #e8e8e8;
+}
+.tabs .tab.active {
+  background: #fff;
+  color: #000;
+  font-weight: 600;
+  border-color: #bbb;
+  margin-bottom: -2px;
+  border-bottom: 2px solid #fff;
+}
+.sheet-summary {
+  margin: 6px 0 10px;
+  font-size: 13px;
+  color: #555;
+}

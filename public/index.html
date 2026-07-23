@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dive Centre Fuel Log</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="loginScreen" class="screen">
+  <form id="loginForm" class="login-box">
+    <h1>Dive Centre Fuel Log</h1>
+    <p class="subtitle">Admin Dashboard</p>
+    <input type="text" id="username" placeholder="Username" required autocomplete="username">
+    <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
+    <button type="submit">Log In</button>
+    <p id="loginError" class="error"></p>
+  </form>
+</div>
+
+<div id="dashboard" class="screen" style="display:none">
+  <header class="no-print">
+    <h1>Dive Centre Fuel Log</h1>
+    <button id="logoutBtn" class="link-btn">Log out</button>
+  </header>
+
+  <section class="controls no-print">
+    <div class="filter-group">
+      <label>From <input type="date" id="startDate"></label>
+      <label>To <input type="date" id="endDate"></label>
+      <button id="applyFilter">Apply</button>
+      <label class="live-toggle"><input type="checkbox" id="liveToggle"> Live updates</label>
+    </div>
+    <div class="action-group">
+      <button id="addBtn">+ Add entry</button>
+      <button id="exportExcel">Export Excel</button>
+      <button id="exportPdf">Export PDF</button>
+      <button id="printBtn">Print</button>
+    </div>
+  </section>
+
+  <div class="tabs no-print" id="sheetTabs">
+    <button class="tab active" data-type="petrol">🟢 Petrol</button>
+    <button class="tab" data-type="diesel">🔵 Diesel</button>
+    <button class="tab" data-type="all">All</button>
+  </div>
+
+  <section id="printHeader" class="print-only">
+    <h2>Dive Centre Fuel Log</h2>
+    <p id="printRange"></p>
+  </section>
+
+  <p id="sheetSummary" class="sheet-summary"></p>
+
+  <table id="logTable">
+    <thead>
+      <tr>
+        <th>Date</th><th>Boat Name</th><th>Type</th>
+        <th>Qty (L)</th><th>Unit</th><th>Section</th>
+        <th class="no-print">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="logBody"></tbody>
+  </table>
+</div>
+
+<div id="editModal" class="modal-overlay no-print" style="display:none">
+  <div class="modal">
+    <h3 id="editTitle">Edit Entry</h3>
+    <label>Date <input type="date" id="editDate"></label>
+    <label>Boat Name <input type="text" id="editBoat" list="boatList"></label>
+    <datalist id="boatList"></datalist>
+    <label>Type
+      <select id="editType">
+        <option value="petrol">Petrol</option>
+        <option value="diesel">Diesel</option>
+      </select>
+    </label>
+    <label>Quantity (L) <input type="number" step="0.1" id="editQty"></label>
+    <label>Unit <input type="text" id="editUnit" value="Ltrs"></label>
+    <label>Section
+      <select id="editSection">
+        <option value="">—</option>
+        <option value="coral">Coral</option>
+        <option value="outrigger">Outrigger</option>
+      </select>
+    </label>
+    <div class="modal-actions">
+      <button id="saveEdit">Save</button>
+      <button id="cancelEdit" class="secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
